@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}{{ shop.name }} - FCU-Foodster{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 左側：店家資訊與菜單 -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h2 class="card-title mb-0">{{ shop.name }}</h2>
+                    <span class="badge bg-warning text-dark fs-6">★ {{ shop.rating }} ({{ shop.reviews }} 則評價)</span>
+                </div>
+                <p class="text-muted">{{ shop.description }}</p>
+                <button class="btn btn-primary w-100 mt-2">發起這家店的揪團</button>
+            </div>
+        </div>
+
+        <h4 class="mb-3">店家菜單</h4>
+        <div class="list-group shadow-sm mb-4">
+            {% for item in shop.menu %}
+            <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                <div>
+                    <h5 class="mb-1">{{ item.name }}</h5>
+                    <small class="text-muted">{{ item.description }}</small>
+                </div>
+                <div class="text-end">
+                    <span class="fs-5 fw-bold text-danger me-3">${{ item.price }}</span>
+                    <button class="btn btn-outline-success btn-sm">加入願望清單</button>
+                </div>
+            </div>
+            {% else %}
+            <div class="list-group-item text-center text-muted p-4">
+                目前沒有菜單資料
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 右側：地圖與取餐資訊 -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0">店家位置與取餐點</h5>
+            </div>
+            <div class="card-body p-0">
+                <!-- Google Maps Embed API 
+                     Note: 使用了 'q=店家名稱+逢甲' 來讓地圖定位在附近。
+                     這裡預設使用免金鑰的簡單搜尋嵌入，未來若有 API Key 可加上 &key=YOUR_KEY -->
+                <div class="ratio ratio-4x3">
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        style="border:0;" 
+                        loading="lazy" 
+                        allowfullscreen 
+                        referrerpolicy="no-referrer-when-downgrade" 
+                        src="https://www.google.com/maps/embed/v1/place?q={{ shop.name }}逢甲大學&key=">
+                    </iframe>
+                    <!-- 注意：因為沒有 API Key，上面那行正式上線會報錯。
+                         為了確保你在沒有 Key 時也能看到地圖，下面提供一個備用的 iframe 寫法 -->
+                </div>
+            </div>
+            <div class="card-body bg-light border-top">
+                <p class="mb-1 text-muted small"><strong>備註：</strong> 地圖可顯示店家距離校園的實際位置。若是發起揪團，團長可進一步於地圖上標示校內取餐點（例如：圖書館、忠勤樓）。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 如果沒有 Google API key 會顯示錯誤，這邊用個開發測試用的 iframe 覆蓋上述的 div -->
+<script>
+    // 為了展示目的，若您沒有 Google Maps API Key，這裡動態替換為不需 Key 的 Google Maps 搜尋連結嵌入
+    document.addEventListener("DOMContentLoaded", function() {
+        const mapContainer = document.querySelector('.ratio-4x3');
+        const shopQuery = encodeURIComponent('{{ shop.name }} 逢甲大學');
+        mapContainer.innerHTML = `<iframe 
+            width="100%" 
+            height="100%" 
+            style="border:0;" 
+            loading="lazy" 
+            allowfullscreen 
+            src="https://maps.google.com/maps?q=${shopQuery}&t=&z=15&ie=UTF8&iwloc=&output=embed">
+        </iframe>`;
+    });
+</script>
+{% endblock %}
