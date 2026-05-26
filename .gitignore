@@ -1,4 +1,7 @@
 __pycache__/
+*.pyc
+app.db
+venv/
 *.py[cod]
 *$py.class
 instance/
