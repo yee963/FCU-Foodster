@@ -1,3 +1,4 @@
+# empty init file
 # This file makes routes a package
 from flask import Blueprint
 
