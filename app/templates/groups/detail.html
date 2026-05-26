@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}{{ group.store_name }} 揪團詳情 - FCU-Foodster{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('group.index') }}" class="text-decoration-none text-muted fw-bold">
+        <i class="fa-solid fa-arrow-left me-2"></i>返回大廳
+    </a>
+</div>
+
+<div class="row g-4">
+    <!-- 左側：揪團詳細資訊與地圖 -->
+    <div class="col-lg-5">
+        <div class="card card-premium p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="badge rounded-pill {% if group.status == 'open' %}badge-open{% else %}badge-closed bg-dark text-white{% endif %} py-2 px-3">
+                    <i class="fa-solid {% if group.status == 'open' %}fa-circle-dot{% else %}fa-lock{% endif %} me-1"></i>
+                    {{ '開放中' if group.status == 'open' else '已結單' }}
+                </span>
+                <span class="text-muted small">ID: #{{ group.id }}</span>
+            </div>
+
+            <h2 class="fw-bold mb-4">{{ group.store_name }}</h2>
+
+            <div class="border-top pt-3">
+                <div class="row mb-3">
+                    <div class="col-4 text-muted fw-semibold">開團團長</div>
+                    <div class="col-8 fw-bold text-primary">
+                        <i class="fa-solid fa-user-tie me-2"></i>{{ group.creator_name or '同學' }}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-4 text-muted fw-semibold">取餐地點</div>
+                    <div class="col-8 fw-semibold text-dark">
+                        <i class="fa-solid fa-map-pin me-2 text-danger"></i>{{ group.pickup_location }}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-4 text-muted fw-semibold">外送總運費</div>
+                    <div class="col-8 fw-semibold text-danger">
+                        <i class="fa-solid fa-truck-fast me-2 text-warning"></i>${{ group.delivery_fee }} 元
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-4 text-muted fw-semibold">截止時間</div>
+                    <div class="col-8 fw-semibold text-dark">
+                        <i class="fa-solid fa-hourglass-half me-2 text-info"></i>{{ group.deadline.replace('T', ' ') }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作區 -->
+            <div class="border-top pt-4 mt-2">
+                {% if group.status == 'open' %}
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('order.new_order', group_id=group.id) }}" class="btn btn-brand py-3">
+                            <i class="fa-solid fa-cart-plus me-2"></i>我要參團點餐
+                        </a>
+                        <!-- 模擬團長進行結單 -->
+                        <form action="{{ url_for('group.close_group', id=group.id) }}" method="POST" onsubmit="return confirm('確定要結單嗎？結單後將無法接受新點單，且會自動平攤運費計算帳款。');">
+                            <button type="submit" class="btn btn-outline-danger w-100 py-3 mt-2 fw-bold" style="border-radius:12px; border-width:2px;">
+                                <i class="fa-solid fa-lock me-2"></i>團長結束收單 (計算拆帳)
+                            </button>
+                        </form>
+                    </div>
+                {% else %}
+                    <div class="alert alert-dark border-0 rounded-3 text-center mb-0 p-3">
+                        <h5 class="fw-bold mb-1"><i class="fa-solid fa-circle-check text-success me-2"></i>此團已截止結單</h5>
+                        <p class="small text-muted mb-0">外送費用已平攤，請團員依據右側金額付款給團長。</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 店家位置地圖卡片 -->
+        <div class="card card-premium p-0 overflow-hidden">
+            <div class="p-3 bg-light border-bottom">
+                <h6 class="fw-bold mb-0 text-secondary"><i class="fa-solid fa-map-location-dot me-2 text-success"></i>店家位置示意圖</h6>
+            </div>
+            <div class="ratio ratio-16x9">
+                <iframe 
+                    width="100%" 
+                    height="100%" 
+                    style="border:0;" 
+                    loading="lazy" 
+                    allowfullscreen 
+                    src="https://maps.google.com/maps?q={{ store.name | urlencode }}逢甲大學&t=&z=15&ie=UTF8&iwloc=&output=embed">
+                </iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右側：參團點餐名單與拆帳結算 -->
+    <div class="col-lg-7">
+        <h3 class="fw-bold mb-4">
+            <i class="fa-solid fa-clipboard-list me-2 text-danger"></i>參團點餐明細 
+            <span class="badge bg-secondary rounded-pill fs-6 py-2 px-3 ms-2">{{ orders | length }} 筆訂單</span>
+        </h3>
+
+        {% if orders %}
+            <div class="d-flex flex-column gap-4">
+                {% for order in orders %}
+                <div class="card card-premium shadow-sm border border-light">
+                    <!-- 訂單 Header (團員姓名與付款狀態) -->
+                    <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-dark fs-5">
+                            <i class="fa-solid fa-circle-user text-secondary me-2"></i>{{ order.username }}
+                        </span>
+                        
+                        <!-- 狀態展示 -->
+                        <div>
+                            {% if group.status == 'open' %}
+                                <span class="badge rounded-pill bg-light text-muted border py-2 px-3">
+                                    <i class="fa-solid fa-spinner fa-spin me-1"></i>等待結單中
+                                </span>
+                            {% else %}
+                                {% if order.payment_status == 'paid' %}
+                                    <span class="badge rounded-pill py-2 px-3" style="background-color: rgba(6, 214, 160, 0.15); color: var(--brand-accent); font-weight: 600;">
+                                        <i class="fa-solid fa-check-circle me-1"></i>已付款給團長
+                                    </span>
+                                {% else %}
+                                    <span class="badge rounded-pill py-2 px-3 mb-2 mb-sm-0 me-sm-2" style="background-color: rgba(255, 183, 3, 0.15); color: #d48c00; font-weight: 600;">
+                                        <i class="fa-solid fa-circle-exclamation me-1"></i>未付款 (待對帳)
+                                    </span>
+                                    <!-- 標記付款按鈕 -->
+                                    <form action="{{ url_for('order.pay_order', id=order.id) }}" method="POST" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-brand py-1 px-3">
+                                            確認付款
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- 訂單餐點 Table -->
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4 py-3 text-secondary" style="width: 50%;">餐點品項</th>
+                                        <th class="text-center py-3 text-secondary" style="width: 15%;">單價</th>
+                                        <th class="text-center py-3 text-secondary" style="width: 15%;">數量</th>
+                                        <th class="pe-4 text-end py-3 text-secondary" style="width: 20%;">小計</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order['items'] %}
+                                    <tr>
+                                        <td class="ps-4 fw-semibold text-dark">{{ item.item_name }}</td>
+                                        <td class="text-center text-muted">${{ item.price }}</td>
+                                        <td class="text-center fw-bold">{{ item.quantity }}</td>
+                                        <td class="pe-4 text-end text-danger fw-bold">${{ item.price * item.quantity }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 訂單 Footer (金額結算) -->
+                    <div class="card-footer bg-light border-top py-3 px-4">
+                        {% if group.status == 'open' %}
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted small">點餐純餐費總計</span>
+                                <span class="fs-5 fw-bold text-danger">${{ order.items_total }} 元</span>
+                            </div>
+                        {% else %}
+                            <div class="d-flex flex-column gap-1">
+                                <div class="d-flex justify-content-between align-items-center text-muted small">
+                                    <span>純餐費總計</span>
+                                    <span>${{ order.items_total }} 元</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center text-muted small">
+                                    <span>平攤運費（${{ group.delivery_fee }} / {{ orders | length }} 人）</span>
+                                    <span>+ ${{ order.split_fee }} 元</span>
+                                </div>
+                                <hr class="my-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-dark">應付總額</span>
+                                    <span class="fs-4 fw-bold text-danger">${{ order.final_amount }} 元</span>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <!-- 尚未有人參團 -->
+            <div class="text-center py-5 bg-white rounded-4 border border-light shadow-sm">
+                <div class="text-muted display-4 mb-3"><i class="fa-solid fa-users-slash"></i></div>
+                <h5 class="fw-bold mb-1">目前還沒有同學加入點餐</h5>
+                <p class="text-muted mb-0 small">快點擊左側「我要參團點餐」成為第一個參團的人吧！</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

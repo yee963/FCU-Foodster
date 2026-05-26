@@ -11,8 +11,22 @@ def new_order(group_id):
     """
     group = Group.get_by_id(group_id)
     if not group or group['status'] != 'open':
-        return "Cannot join this group", 400
-    return "New Order Form Placeholder", 200
+        flash("該揪團已關閉或不存在")
+        return redirect(url_for('group.detail', id=group_id))
+        
+    from app.models.store import Store
+    store = Store.get_by_id(group['store_id'])
+    menu = Store.get_menu(group['store_id'])
+    
+    # 獲取所有使用者，以供模擬點餐
+    from app.models.database import get_db_connection
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users")
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return render_template('orders/new.html', group=group, store=store, menu=menu, users=users)
 
 @order_bp.route('/groups/<int:group_id>/orders', methods=['POST'])
 def create_order(group_id):

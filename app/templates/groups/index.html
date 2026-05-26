@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}揪團大廳 - FCU-Foodster{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-5">
+    <div class="col-md-8">
+        <h1 class="fw-bold mb-1">
+            <span style="background: linear-gradient(45deg, var(--brand-primary), var(--brand-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">校園揪團大廳</span>
+        </h1>
+        <p class="text-muted mb-0">看看有哪些熱門美食正在成團，加入分攤運費、省去排隊時間！</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('group.new_group') }}" class="btn btn-brand">
+            <i class="fa-solid fa-plus me-2"></i>我要發起揪團
+        </a>
+    </div>
+</div>
+
+<!-- 揪團清單 -->
+<div class="row g-4">
+    {% for group in groups %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card card-premium h-100">
+            <!-- 店家圖片模擬 (依據 store_id 給予不同的插圖風格或背景色) -->
+            <div class="p-4 text-white d-flex flex-column justify-content-between" 
+                 style="height: 140px; background: 
+                    {% if group.store_id == 1 %}linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)
+                    {% elif group.store_id == 2 %}linear-gradient(135deg, #f6d365 0%, #fda085 100%)
+                    {% else %}linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%){% endif %};">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="badge rounded-pill {% if group.status == 'open' %}badge-open{% else %}badge-closed bg-dark text-white{% endif %} py-2 px-3">
+                        <i class="fa-solid {% if group.status == 'open' %}fa-circle-dot{% else %}fa-lock{% endif %} me-1"></i>
+                        {{ '開放中' if group.status == 'open' else '已結單' }}
+                    </span>
+                    <span class="fw-bold" style="text-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+                        <i class="fa-solid fa-user me-1"></i>{{ group.creator_name or '同學' }} 團長
+                    </span>
+                </div>
+                <h3 class="fw-bold mb-0 text-truncate" style="text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                    {{ group.store_name or '未知店家' }}
+                </h3>
+            </div>
+            
+            <div class="card-body d-flex flex-column p-4">
+                <!-- 取餐與費用細節 -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fa-solid fa-map-location-dot text-danger me-3 fs-5" style="width: 20px;"></i>
+                        <div>
+                            <small class="text-muted d-block">取餐地點</small>
+                            <span class="fw-semibold">{{ group.pickup_location }}</span>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fa-solid fa-hand-holding-dollar text-warning me-3 fs-5" style="width: 20px;"></i>
+                        <div>
+                            <small class="text-muted d-block">外送總額 (平攤費用)</small>
+                            <span class="fw-semibold text-danger">${{ group.delivery_fee }} 元</span>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fa-solid fa-clock text-info me-3 fs-5" style="width: 20px;"></i>
+                        <div>
+                            <small class="text-muted d-block">結單截止時間</small>
+                            <span class="fw-semibold text-dark text-truncate">{{ group.deadline.replace('T', ' ') }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 卡片下方行動按鈕 -->
+                <div class="mt-auto">
+                    {% if group.status == 'open' %}
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <a href="{{ url_for('group.detail', id=group.id) }}" class="btn btn-outline-secondary w-100 py-2 border-2 rounded-3 text-dark fw-bold">
+                                查看狀態
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ url_for('order.new_order', group_id=group.id) }}" class="btn btn-brand w-100 py-2 rounded-3">
+                                立即參團
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <a href="{{ url_for('group.detail', id=group.id) }}" class="btn btn-dark w-100 py-2 rounded-3 fw-bold">
+                        查看結算對帳
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- 沒揪團時的精美空白頁面 -->
+    <div class="col-12 text-center py-5">
+        <div class="py-5 bg-white rounded-4 shadow-sm border border-light max-width-500 mx-auto">
+            <div class="mb-4">
+                <span class="display-1 text-muted"><i class="fa-solid fa-mug-hot"></i></span>
+            </div>
+            <h3 class="fw-bold mb-2">目前沒有進行中的揪團</h3>
+            <p class="text-muted mb-4 px-4">快來發起第一個揪團，邀請同班同學或宿舍室友一起訂美味的午晚餐！</p>
+            <a href="{{ url_for('group.new_group') }}" class="btn btn-brand py-2 px-4">
+                <i class="fa-solid fa-fire me-2"></i>由我發起第一個揪團
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

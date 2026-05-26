@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}發起揪團 - FCU-Foodster{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="mb-4">
+            <a href="{{ url_for('group.index') }}" class="text-decoration-none text-muted fw-bold">
+                <i class="fa-solid fa-arrow-left me-2"></i>返回大廳
+            </a>
+        </div>
+
+        <div class="card card-premium shadow p-4 p-md-5">
+            <div class="text-center mb-5">
+                <div class="display-5 text-danger mb-2">
+                    <i class="fa-solid fa-pizza-slice"></i>
+                </div>
+                <h2 class="fw-bold mb-1">發起全新美味揪團</h2>
+                <p class="text-muted">設定好店家、外送費與取餐點，就可以邀請大家參團囉！</p>
+            </div>
+
+            <form action="{{ url_for('group.create_group') }}" method="POST">
+                
+                <!-- 模擬開團人 -->
+                <div class="mb-4">
+                    <label for="creator_id" class="form-label fw-bold text-secondary">
+                        <i class="fa-solid fa-circle-user me-2 text-primary"></i>選擇發起人 (模擬登入身份)
+                    </label>
+                    <select class="form-select form-select-lg rounded-3 border-2" id="creator_id" name="creator_id" required>
+                        {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.username }} ({{ user.email }})</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">在模擬校園驗證前，您可以手動切換開團人以利對帳測試。</div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <!-- 選擇店家 -->
+                    <div class="col-md-6">
+                        <label for="store_id" class="form-label fw-bold text-secondary">
+                            <i class="fa-solid fa-store me-2 text-warning"></i>選擇目標店家
+                        </label>
+                        <select class="form-select form-select-lg rounded-3 border-2" id="store_id" name="store_id" required>
+                            {% for store in stores %}
+                            <option value="{{ store.id }}">{{ store.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 外送費 -->
+                    <div class="col-md-6">
+                        <label for="delivery_fee" class="form-label fw-bold text-secondary">
+                            <i class="fa-solid fa-truck-ramp-box me-2 text-danger"></i>預估外送總金額 (元)
+                        </label>
+                        <input type="number" class="form-control form-control-lg rounded-3 border-2" id="delivery_fee" name="delivery_fee" value="30" min="0" required>
+                        <div class="form-text">此費用將在結單時，由所有參團的人數平攤。</div>
+                    </div>
+                </div>
+
+                <!-- 取餐地點 -->
+                <div class="mb-4">
+                    <label for="pickup_location" class="form-label fw-bold text-secondary">
+                        <i class="fa-solid fa-map-pin me-2 text-success"></i>校內取餐地點
+                    </label>
+                    <input type="text" class="form-control form-control-lg rounded-3 border-2" id="pickup_location" name="pickup_location" placeholder="例如：圖書館門口、忠勤樓一樓大廳、福星宿舍A棟" required>
+                    <div class="mt-2 d-flex flex-wrap gap-2">
+                        <span class="badge bg-light text-dark border py-2 px-3 cursor-pointer quick-loc">圖書館正門</span>
+                        <span class="badge bg-light text-dark border py-2 px-3 cursor-pointer quick-loc">忠勤樓大廳</span>
+                        <span class="badge bg-light text-dark border py-2 px-3 cursor-pointer quick-loc">福星宿舍大廳</span>
+                        <span class="badge bg-light text-dark border py-2 px-3 cursor-pointer quick-loc">科航館圓環</span>
+                    </div>
+                </div>
+
+                <!-- 截止時間 -->
+                <div class="mb-5">
+                    <label for="deadline" class="form-label fw-bold text-secondary">
+                        <i class="fa-solid fa-hourglass-half me-2 text-info"></i>收單截止時間
+                    </label>
+                    <input type="datetime-local" class="form-control form-control-lg rounded-3 border-2" id="deadline" name="deadline" required>
+                    <div class="form-text">逾期後系統將不再接受其他同學點餐加入。</div>
+                </div>
+
+                <!-- 送出表單 -->
+                <button type="submit" class="btn btn-brand w-100 py-3 rounded-3 fs-5">
+                    <i class="fa-solid fa-paper-plane me-2"></i>確定開團並發佈
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 設定截止時間預設為 1 小時後
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+        
+        // 格式化為 YYYY-MM-DDThh:mm
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        const defaultTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+        document.getElementById('deadline').value = defaultTime;
+
+        // 快速填寫取餐點
+        const quickLocs = document.querySelectorAll('.quick-loc');
+        const locInput = document.getElementById('pickup_location');
+        quickLocs.forEach(function(badge) {
+            badge.style.cursor = "pointer";
+            badge.addEventListener("click", function() {
+                locInput.value = badge.textContent;
+            });
+        });
+    });
+</script>
+{% endblock %}
