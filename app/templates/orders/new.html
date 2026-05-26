@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}加入點餐 - FCU-Foodster{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        
+        <div class="mb-4">
+            <a href="{{ url_for('group.detail', id=group.id) }}" class="text-decoration-none text-muted fw-bold">
+                <i class="fa-solid fa-arrow-left me-2"></i>返回揪團詳情
+            </a>
+        </div>
+
+        <div class="card card-premium p-4 p-md-5 mb-5 shadow">
+            
+            <div class="d-md-flex justify-content-between align-items-center mb-5 pb-3 border-bottom">
+                <div class="mb-3 mb-md-0">
+                    <span class="badge bg-danger-subtle text-danger fw-bold mb-2">
+                        <i class="fa-solid fa-utensils me-1"></i>跟著大家吃美食
+                    </span>
+                    <h2 class="fw-bold mb-0">參團點餐：{{ store.name }}</h2>
+                    <p class="text-muted mb-0 mt-1">取餐點：{{ group.pickup_location }}</p>
+                </div>
+                <div class="text-md-end text-secondary">
+                    <small class="d-block">截止收單時間</small>
+                    <span class="fw-bold text-dark fs-6">{{ group.deadline.replace('T', ' ') }}</span>
+                </div>
+            </div>
+
+            <!-- 點餐表單 -->
+            <form id="orderForm" action="{{ url_for('order.create_order', group_id=group.id) }}" method="POST">
+                
+                <!-- 模擬點餐人 -->
+                <div class="card bg-light border-0 rounded-4 p-4 mb-4">
+                    <h5 class="fw-bold mb-3 text-secondary"><i class="fa-solid fa-user-tag me-2 text-primary"></i>選擇您的身份 (模擬參團)</h5>
+                    <select class="form-select form-select-lg border-2 rounded-3" id="user_id" name="user_id" required>
+                        {% for user in users %}
+                            <!-- 預設選擇 ID 2 的使用者 (余芃燊) 作為點餐測試，因為 ID 1 通常是發起人 -->
+                            <option value="{{ user.id }}" {% if user.id == 2 %}selected{% endif %}>{{ user.username }} ({{ user.email }})</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text mt-2">您可以手動選取其他同學來模擬多人在同一個揪團下點餐，藉此測試分帳功能。</div>
+                </div>
+
+                <!-- 菜單選擇 -->
+                <h4 class="fw-bold mb-3"><i class="fa-solid fa-book-open me-2 text-warning"></i>店家菜單</h4>
+                <div class="list-group rounded-4 overflow-hidden border border-light shadow-sm mb-5">
+                    {% for item in menu %}
+                        <div class="list-group-item p-4 d-flex justify-content-between align-items-center gap-3 menu-item-card">
+                            <div style="max-width: 70%;">
+                                <h5 class="fw-bold mb-1 item-name-display">{{ item.name }}</h5>
+                                <p class="text-muted small mb-2">{{ item.description }}</p>
+                                <span class="fs-5 fw-bold text-danger">${{ item.price }}</span>
+                            </div>
+                            
+                            <!-- 數量增減控制器 -->
+                            <div class="text-end">
+                                <div class="input-group input-group-lg" style="width: 140px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-radius: 8px;">
+                                    <button class="btn btn-outline-secondary btn-minus px-3 fw-bold border-2" type="button" 
+                                            data-name="{{ item.name }}" data-price="{{ item.price }}">-</button>
+                                    <input type="text" class="form-control text-center fw-bold bg-white border-2 qty-input" 
+                                           style="font-size: 1.1rem;" value="0" readonly>
+                                    <button class="btn btn-outline-secondary btn-plus px-3 fw-bold border-2" type="button" 
+                                            data-name="{{ item.name }}" data-price="{{ item.price }}">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="list-group-item text-center p-5 text-muted">
+                            目前此店家沒有菜單資料。
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- 隱藏 input 注入容器 (由 JS 在 submit 時動態產生以配合後端格式) -->
+                <div id="hiddenInputsContainer"></div>
+
+                <!-- 浮動購物車總計與送出列 -->
+                <div class="card p-3 border border-light bg-white rounded-4 shadow d-flex flex-sm-row justify-content-between align-items-center gap-3">
+                    <div>
+                        <span class="text-muted d-block small">已選購商品</span>
+                        <span class="fw-bold text-dark fs-5" id="itemCountDisplay">0 件</span>
+                    </div>
+                    <div class="text-sm-center">
+                        <span class="text-muted d-block small">純餐費總計</span>
+                        <span class="fs-3 fw-extrabold text-danger" id="totalAmountDisplay">$0</span>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-brand btn-lg py-3 px-5 w-100" id="submitBtn" disabled>
+                            <i class="fa-solid fa-circle-check me-2"></i>確認加入揪團
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .menu-item-card {
+        transition: background-color 0.2s ease;
+    }
+    .menu-item-card:hover {
+        background-color: #fafbfc;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const orderData = {};
+
+        const btnMinuses = document.querySelectorAll('.btn-minus');
+        const btnPluses = document.querySelectorAll('.btn-plus');
+        const itemCountDisplay = document.getElementById('itemCountDisplay');
+        const totalAmountDisplay = document.getElementById('totalAmountDisplay');
+        const submitBtn = document.getElementById('submitBtn');
+        const form = document.getElementById('orderForm');
+        const hiddenInputsContainer = document.getElementById('hiddenInputsContainer');
+
+        function updateCartSummary() {
+            let totalQty = 0;
+            let totalAmount = 0;
+
+            for (const name in orderData) {
+                totalQty += orderData[name].qty;
+                totalAmount += orderData[name].price * orderData[name].qty;
+            }
+
+            itemCountDisplay.textContent = `${totalQty} 件`;
+            totalAmountDisplay.textContent = `$${totalAmount}`;
+            
+            if (totalQty > 0) {
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.disabled = true;
+            }
+        }
+
+        btnPluses.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const name = button.getAttribute('data-name');
+                const price = parseInt(button.getAttribute('data-price'));
+                const input = button.previousElementSibling;
+                
+                let currentQty = parseInt(input.value);
+                currentQty++;
+                input.value = currentQty;
+
+                orderData[name] = {
+                    price: price,
+                    qty: currentQty
+                };
+
+                updateCartSummary();
+            });
+        });
+
+        btnMinuses.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const name = button.getAttribute('data-name');
+                const price = parseInt(button.getAttribute('data-price'));
+                const input = button.nextElementSibling;
+                
+                let currentQty = parseInt(input.value);
+                if (currentQty > 0) {
+                    currentQty--;
+                    input.value = currentQty;
+
+                    if (currentQty === 0) {
+                        delete orderData[name];
+                    } else {
+                        orderData[name] = {
+                            price: price,
+                            qty: currentQty
+                        };
+                    }
+                    updateCartSummary();
+                }
+            });
+        });
+
+        // 提交表單前，動態注入 item_name_X, price_X, quantity_X 到 hiddenInputsContainer 中
+        form.addEventListener('submit', function(event) {
+            hiddenInputsContainer.innerHTML = ''; // 清空舊的
+            
+            let idx = 1;
+            for (const name in orderData) {
+                const item = orderData[name];
+                
+                // 品項名稱 input
+                const nameInput = document.createElement('input');
+                nameInput.type = 'hidden';
+                nameInput.name = `item_name_${idx}`;
+                nameInput.value = name;
+                hiddenInputsContainer.appendChild(nameInput);
+
+                // 品項單價 input
+                const priceInput = document.createElement('input');
+                priceInput.type = 'hidden';
+                priceInput.name = `price_${idx}`;
+                priceInput.value = item.price;
+                hiddenInputsContainer.appendChild(priceInput);
+
+                // 品項數量 input
+                const qtyInput = document.createElement('input');
+                qtyInput.type = 'hidden';
+                qtyInput.name = `quantity_${idx}`;
+                qtyInput.value = item.qty;
+                hiddenInputsContainer.appendChild(qtyInput);
+
+                idx++;
+            }
+        });
+    });
+</script>
+{% endblock %}

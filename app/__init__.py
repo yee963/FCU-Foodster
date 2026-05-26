@@ -1,21 +1,24 @@
+import os
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
-from config import Config
+from app.models.database import init_db
+from app.routes import group_bp, order_bp
 
-db = SQLAlchemy()
-login = LoginManager()
-login.login_view = 'auth.login'
-login.login_message = '請先登入以存取此頁面。'
+# 建立 Flask 應用程式實例
+app = Flask(__name__, template_folder='templates', static_folder='static')
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "dev-key-for-foodster")
 
-def create_app(config_class=Config):
-    app = Flask(__name__)
-    app.config.from_object(config_class)
+# 初始化資料庫 (若無則自動建立資料表並寫入種子資料)
+init_db()
 
-    db.init_app(app)
-    login.init_app(app)
+# 註冊 Blueprints
+app.register_blueprint(group_bp)
+app.register_blueprint(order_bp)
 
-    from app.routes.auth import auth_bp
-    app.register_blueprint(auth_bp)
+# 首頁路由：轉向至揪團大廳
+@app.route('/')
+def home():
+    from flask import redirect, url_for
+    return redirect(url_for('group.index'))
 
-    return app
+# 導入其他路由 (如店家細節頁面路由)
+from app import routes

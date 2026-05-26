@@ -37,13 +37,19 @@ class Group:
     @staticmethod
     def get_all():
         """
-        取得所有揪團記錄
+        取得所有揪團記錄 (包含店家名稱與發起人名稱)
         :return: list of dicts
         """
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM groups ORDER BY created_at DESC")
+            cursor.execute("""
+                SELECT groups.*, stores.name AS store_name, users.username AS creator_name
+                FROM groups
+                LEFT JOIN stores ON groups.store_id = stores.id
+                LEFT JOIN users ON groups.creator_id = users.id
+                ORDER BY groups.created_at DESC
+            """)
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
         except Exception as e:
@@ -55,14 +61,20 @@ class Group:
     @staticmethod
     def get_by_id(group_id):
         """
-        取得單筆揪團記錄
+        取得單筆揪團記錄 (包含店家名稱與發起人名稱)
         :param group_id: int
         :return: dict or None
         """
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM groups WHERE id = ?", (group_id,))
+            cursor.execute("""
+                SELECT groups.*, stores.name AS store_name, users.username AS creator_name
+                FROM groups
+                LEFT JOIN stores ON groups.store_id = stores.id
+                LEFT JOIN users ON groups.creator_id = users.id
+                WHERE groups.id = ?
+            """, (group_id,))
             row = cursor.fetchone()
             return dict(row) if row else None
         except Exception as e:

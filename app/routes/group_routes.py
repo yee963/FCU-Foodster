@@ -10,15 +10,23 @@ def index():
     顯示所有開放中的揪團列表
     """
     groups = Group.get_all()
-    # 由於沒有模板，先回傳 JSON 格式以便測試
-    return {"groups": groups}, 200
+    return render_template('groups/index.html', groups=groups)
 
 @group_bp.route('/groups/new', methods=['GET'])
 def new_group():
     """
     顯示發起揪團的表單
     """
-    return "New Group Form Placeholder", 200
+    from app.models.store import Store
+    stores = Store.get_all()
+    # 獲取所有使用者，以便模擬發起人
+    from app.models.database import get_db_connection
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users")
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return render_template('groups/new.html', stores=stores, users=users)
 
 @group_bp.route('/groups', methods=['POST'])
 def create_group():
@@ -26,8 +34,8 @@ def create_group():
     接收表單，存入 DB，重導向至大廳
     """
     data = {
-        'creator_id': request.form.get('creator_id', 1), # 預設 user 1 (F-01 尚未整合)
-        'store_id': request.form.get('store_id', 1),
+        'creator_id': int(request.form.get('creator_id', 1)),
+        'store_id': int(request.form.get('store_id', 1)),
         'delivery_fee': int(request.form.get('delivery_fee', 0)),
         'pickup_location': request.form.get('pickup_location'),
         'deadline': request.form.get('deadline'),
@@ -51,11 +59,33 @@ def detail(id):
     if not group:
         return "Group not found", 404
         
+    from app.models.store import Store
+    store = Store.get_by_id(group['store_id'])
+    
     orders = Order.get_by_group_id(id)
-    return {
-        "group": group,
-        "orders": orders
-    }, 200
+    
+    # 獲取訂單明細與用戶姓名
+    from app.models.order_item import OrderItem
+    from app.models.database import get_db_connection
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    detailed_orders = []
+    for o in orders:
+        order_dict = dict(o)
+        # 查詢用戶名稱
+        cursor.execute("SELECT username FROM users WHERE id = ?", (order_dict['user_id'],))
+        u = cursor.fetchone()
+        order_dict['username'] = u['username'] if u else f"User {order_dict['user_id']}"
+        
+        # 查詢訂單細項
+        order_dict['items'] = OrderItem.get_by_order_id(order_dict['id'])
+        detailed_orders.append(order_dict)
+        
+    conn.close()
+    
+    return render_template('groups/detail.html', group=group, store=store, orders=detailed_orders)
 
 @group_bp.route('/groups/<int:id>/close', methods=['POST'])
 def close_group(id):
